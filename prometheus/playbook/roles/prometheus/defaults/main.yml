@@ -44,3 +44,4 @@ prometheus_scrape_configs:
           - "sotehus-piextra:9100"
           - "sotehus-pi5:9100"
           - "sotehus-rugged:9100"
+          - "pop-os:9100"
