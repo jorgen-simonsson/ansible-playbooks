@@ -1,0 +1,17 @@
+---
+# List of users to add to the docker group (allows running docker without sudo)
+docker_users: []
+# Example:
+#   docker_users:
+#     - ubuntu
+#     - deploy
+
+# Docker daemon configuration (written to /etc/docker/daemon.json)
+docker_daemon_config: {}
+# Example:
+#   docker_daemon_config:
+#     log-driver: json-file
+#     log-opts:
+#       max-size: "10m"
+#       max-file: "3"
+#     storage-driver: overlay2

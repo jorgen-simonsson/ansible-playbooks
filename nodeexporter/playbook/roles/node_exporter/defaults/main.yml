@@ -1,0 +1,16 @@
+---
+# Node Exporter version to install
+node_exporter_version: "1.8.2"
+
+# System user/group for node_exporter
+node_exporter_user: node_exporter
+node_exporter_group: node_exporter
+
+# Listen address and port
+node_exporter_listen_address: "0.0.0.0:9100"
+
+# Extra command-line arguments for node_exporter
+node_exporter_extra_args: ""
+
+# Installation directory
+node_exporter_install_dir: /usr/local/bin

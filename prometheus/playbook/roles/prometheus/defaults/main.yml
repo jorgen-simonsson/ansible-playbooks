@@ -1,0 +1,46 @@
+---
+# Prometheus version to install
+prometheus_version: "2.54.1"
+
+# System user/group
+prometheus_user: prometheus
+prometheus_group: prometheus
+
+# Directories
+prometheus_install_dir: /usr/local/bin
+prometheus_config_dir: /etc/prometheus
+prometheus_data_dir: /var/lib/prometheus
+
+# Listen address and port
+prometheus_listen_address: "0.0.0.0:9090"
+
+# Data retention
+prometheus_retention_time: "30d"
+prometheus_retention_size: ""
+
+# Extra command-line arguments
+prometheus_extra_args: ""
+
+# Scrape interval and evaluation interval
+prometheus_global_scrape_interval: "15s"
+prometheus_global_evaluation_interval: "15s"
+
+# Scrape targets - list of jobs
+# Example:
+#   prometheus_scrape_configs:
+#     - job_name: "node"
+#       static_configs:
+#         - targets:
+#             - "192.168.1.100:9100"
+#             - "192.168.1.101:9100"
+prometheus_scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets:
+          - "localhost:9090"
+  - job_name: "node"
+    static_configs:
+      - targets:
+          - "sotehus-piextra:9100"
+          - "sotehus-pi5:9100"
+          - "sotehus-rugged:9100"

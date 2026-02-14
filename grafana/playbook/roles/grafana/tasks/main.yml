@@ -1,0 +1,102 @@
+---
+- name: Install prerequisite packages
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - software-properties-common
+      - curl
+      - gnupg
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Add Grafana GPG key
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg.key
+    dest: /etc/apt/keyrings/grafana.asc
+    mode: "0644"
+    force: false
+
+- name: Add Grafana APT repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/etc/apt/keyrings/grafana.asc]
+      https://apt.grafana.com stable main
+    state: present
+    filename: grafana
+
+- name: Install Grafana
+  ansible.builtin.apt:
+    name: "{{ 'grafana=' + grafana_version if grafana_version else 'grafana' }}"
+    state: "{{ 'present' if grafana_version else 'latest' }}"
+    update_cache: true
+
+- name: Deploy Grafana configuration
+  ansible.builtin.template:
+    src: grafana.ini.j2
+    dest: /etc/grafana/grafana.ini
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: Restart Grafana
+
+- name: Create provisioning directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: grafana
+    mode: "0755"
+  loop:
+    - /etc/grafana/provisioning/datasources
+    - /etc/grafana/provisioning/dashboards
+    - /var/lib/grafana/dashboards
+
+- name: Provision datasources
+  ansible.builtin.template:
+    src: datasources.yml.j2
+    dest: /etc/grafana/provisioning/datasources/ansible.yml
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: Restart Grafana
+
+- name: Provision dashboard provider
+  ansible.builtin.template:
+    src: dashboard_provider.yml.j2
+    dest: /etc/grafana/provisioning/dashboards/ansible.yml
+    owner: root
+    group: grafana
+    mode: "0640"
+  when: grafana_provisioned_dashboards
+  notify: Restart Grafana
+
+- name: Deploy Node Exporter dashboard
+  ansible.builtin.copy:
+    src: node_exporter_dashboard.json
+    dest: /var/lib/grafana/dashboards/node_exporter_dashboard.json
+    owner: grafana
+    group: grafana
+    mode: "0644"
+  when: grafana_provisioned_dashboards
+  notify: Restart Grafana
+
+- name: Install Grafana plugins
+  ansible.builtin.command: grafana-cli plugins install {{ item }}
+  loop: "{{ grafana_plugins }}"
+  register: grafana_plugin_result
+  changed_when: "'Installed' in grafana_plugin_result.stdout"
+  notify: Restart Grafana
+
+- name: Ensure Grafana is started and enabled
+  ansible.builtin.systemd:
+    name: grafana-server
+    state: started
+    enabled: true
+    daemon_reload: true

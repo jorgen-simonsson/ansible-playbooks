@@ -1,0 +1,37 @@
+---
+# Grafana version (used for pinning apt package)
+grafana_version: ""
+
+# Listen address and port
+grafana_http_addr: "0.0.0.0"
+grafana_http_port: 3000
+
+# Admin credentials
+grafana_admin_user: admin
+grafana_admin_password: admin
+
+# Allow anonymous access
+grafana_allow_sign_up: false
+
+# Provisioned datasources
+# Example:
+#   grafana_datasources:
+#     - name: Prometheus
+#       type: prometheus
+#       url: http://localhost:9090
+#       is_default: true
+grafana_datasources:
+  - name: Prometheus
+    type: prometheus
+    url: http://localhost:9090
+    is_default: true
+
+# Provisioned dashboards directory
+grafana_provisioned_dashboards: true
+
+# Install plugins (list of plugin IDs)
+# Example:
+#   grafana_plugins:
+#     - grafana-clock-panel
+#     - grafana-piechart-panel
+grafana_plugins: []

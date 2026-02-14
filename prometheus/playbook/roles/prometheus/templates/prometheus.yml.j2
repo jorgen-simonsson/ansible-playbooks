@@ -1,0 +1,32 @@
+global:
+  scrape_interval: {{ prometheus_global_scrape_interval }}
+  evaluation_interval: {{ prometheus_global_evaluation_interval }}
+
+scrape_configs:
+{% for job in prometheus_scrape_configs %}
+  - job_name: "{{ job.job_name }}"
+{% if job.metrics_path is defined %}
+    metrics_path: "{{ job.metrics_path }}"
+{% endif %}
+{% if job.scheme is defined %}
+    scheme: "{{ job.scheme }}"
+{% endif %}
+{% if job.scrape_interval is defined %}
+    scrape_interval: {{ job.scrape_interval }}
+{% endif %}
+{% if job.static_configs is defined %}
+    static_configs:
+{% for sc in job.static_configs %}
+      - targets:
+{% for target in sc.targets %}
+          - "{{ target }}"
+{% endfor %}
+{% if sc.labels is defined %}
+        labels:
+{% for key, value in sc.labels.items() %}
+          {{ key }}: "{{ value }}"
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
