@@ -28,7 +28,7 @@ A collection of Ansible playbooks for provisioning and monitoring Ubuntu 24.04 s
 Each playbook includes a `run.sh` script that takes three parameters:
 
 ```bash
-./run.sh -h <host> -u <user> -p <password>
+./run.sh -h <host> -u <user> -p <password> [-s]
 ```
 
 | Flag | Description |
@@ -36,6 +36,7 @@ Each playbook includes a `run.sh` script that takes three parameters:
 | `-h` | Target host (IP address or hostname) |
 | `-u` | SSH user |
 | `-p` | SSH password (also used for sudo) |
+| `-s` | Optional. Use `/usr/bin/sudo.ws` instead of the default `sudo`. Required for **Ubuntu 26+** targets, which ship `sudo-rs` (Rust rewrite) as the default `sudo`. `sudo-rs` does not fully support the `-p` flag that Ansible uses to detect the password prompt, causing privilege escalation to time out. The traditional C sudo is still available at `/usr/bin/sudo.ws`. |
 
 ### Install Docker
 
