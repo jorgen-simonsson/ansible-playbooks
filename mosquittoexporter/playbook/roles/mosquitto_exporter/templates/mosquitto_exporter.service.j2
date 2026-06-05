@@ -1,0 +1,26 @@
+[Unit]
+Description=Prometheus Mosquitto Exporter
+Documentation=https://github.com/sapcc/mosquitto-exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User={{ mosquitto_exporter_user }}
+Group={{ mosquitto_exporter_group }}
+EnvironmentFile=/etc/mosquitto-exporter.env
+ExecStart={{ mosquitto_exporter_install_dir }}/mosquitto-exporter \
+    --endpoint={{ mosquitto_exporter_broker_endpoint }} \
+    --bind-address={{ mosquitto_exporter_listen_address }} {{ mosquitto_exporter_extra_args }}
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=yes
+
+[Install]
+WantedBy=multi-user.target

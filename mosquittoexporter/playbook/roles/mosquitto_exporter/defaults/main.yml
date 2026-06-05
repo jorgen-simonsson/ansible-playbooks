@@ -1,0 +1,23 @@
+---
+# Version to build and install (go install uses this tag)
+mosquitto_exporter_version: "0.8.0"
+
+# System user/group
+mosquitto_exporter_user: mosquitto_exporter
+mosquitto_exporter_group: mosquitto_exporter
+
+# Installation directory
+mosquitto_exporter_install_dir: /usr/local/bin
+
+# Address the exporter listens on for Prometheus scrapes
+mosquitto_exporter_listen_address: "0.0.0.0:9234"
+
+# MQTT broker endpoint
+mosquitto_exporter_broker_endpoint: "tcp://127.0.0.1:1883"
+
+# MQTT credentials — set via run.sh -m / -w flags; stored in /etc/mosquitto-exporter.env (mode 0600)
+mosquitto_exporter_mqtt_user: ""
+mosquitto_exporter_mqtt_password: ""
+
+# Extra command-line arguments
+mosquitto_exporter_extra_args: ""

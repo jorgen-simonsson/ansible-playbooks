@@ -87,6 +87,16 @@
   when: grafana_provisioned_dashboards
   notify: Restart Grafana
 
+- name: Deploy Mosquitto dashboard
+  ansible.builtin.copy:
+    src: mosquitto_dashboard.json
+    dest: /var/lib/grafana/dashboards/mosquitto_dashboard.json
+    owner: grafana
+    group: grafana
+    mode: "0644"
+  when: grafana_provisioned_dashboards and grafana_provisioned_mosquitto_dashboard
+  notify: Restart Grafana
+
 - name: Install Grafana plugins
   ansible.builtin.command: grafana-cli plugins install {{ item }}
   loop: "{{ grafana_plugins }}"

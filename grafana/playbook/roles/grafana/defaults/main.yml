@@ -29,6 +29,9 @@ grafana_datasources:
 # Provisioned dashboards directory
 grafana_provisioned_dashboards: true
 
+# Set to true to deploy the Mosquitto MQTT broker dashboard
+grafana_provisioned_mosquitto_dashboard: true
+
 # Install plugins (list of plugin IDs)
 # Example:
 #   grafana_plugins:

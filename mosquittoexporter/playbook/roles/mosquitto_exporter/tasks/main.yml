@@ -1,0 +1,79 @@
+---
+- name: Check current mosquitto-exporter version
+  ansible.builtin.command: "{{ mosquitto_exporter_install_dir }}/mosquitto-exporter --version"
+  register: mosquitto_exporter_current_version
+  changed_when: false
+  failed_when: false
+
+- name: Create mosquitto_exporter group
+  ansible.builtin.group:
+    name: "{{ mosquitto_exporter_group }}"
+    system: true
+    state: present
+
+- name: Create mosquitto_exporter user
+  ansible.builtin.user:
+    name: "{{ mosquitto_exporter_user }}"
+    group: "{{ mosquitto_exporter_group }}"
+    shell: /usr/sbin/nologin
+    system: true
+    create_home: false
+    state: present
+
+- name: Build and install mosquitto-exporter
+  when: >
+    mosquitto_exporter_current_version.rc != 0 or
+    mosquitto_exporter_version not in (mosquitto_exporter_current_version.stdout + mosquitto_exporter_current_version.stderr)
+  block:
+    - name: Install Go (build dependency)
+      ansible.builtin.apt:
+        name: golang-go
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Build and install mosquitto-exporter binary
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/go
+          - install
+          - "-ldflags=-X main.Version={{ mosquitto_exporter_version }}"
+          - "github.com/sapcc/mosquitto-exporter@v{{ mosquitto_exporter_version }}"
+      environment:
+        GOBIN: "{{ mosquitto_exporter_install_dir }}"
+        HOME: /root
+        GOCACHE: /tmp/go-cache-mosquitto-exporter
+      changed_when: true
+      notify: Restart mosquitto-exporter
+
+    - name: Clean up Go build cache
+      ansible.builtin.file:
+        path: /tmp/go-cache-mosquitto-exporter
+        state: absent
+
+- name: Write MQTT credentials env file
+  ansible.builtin.copy:
+    dest: /etc/mosquitto-exporter.env
+    content: |
+      MQTT_USER={{ mosquitto_exporter_mqtt_user }}
+      MQTT_PASS={{ mosquitto_exporter_mqtt_password }}
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart mosquitto-exporter
+
+- name: Deploy mosquitto-exporter systemd service
+  ansible.builtin.template:
+    src: mosquitto_exporter.service.j2
+    dest: /etc/systemd/system/mosquitto-exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart mosquitto-exporter
+
+- name: Ensure mosquitto-exporter is started and enabled
+  ansible.builtin.systemd:
+    name: mosquitto-exporter
+    state: started
+    enabled: true
+    daemon_reload: true

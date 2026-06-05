@@ -8,6 +8,7 @@ A collection of Ansible playbooks for provisioning and monitoring Ubuntu 24.04 s
 |----------|-------------|-------------|
 | **dockerinstall** | Installs Docker CE, CLI, Buildx, and Compose plugin | — |
 | **nodeexporter** | Installs Prometheus Node Exporter as a systemd service | 9100 |
+| **mosquittoexporter** | Installs Prometheus Mosquitto Exporter as a systemd service | 9234 |
 | **prometheus** | Installs Prometheus server with configurable scrape targets | 9090 |
 | **grafana** | Installs Grafana with auto-provisioned Prometheus datasource and Node Exporter dashboard | 3000 |
 
@@ -62,6 +63,49 @@ Downloads and installs Prometheus Node Exporter as a systemd service. Metrics ar
 |----------|---------|-------------|
 | `node_exporter_version` | `1.8.2` | Version to install |
 | `node_exporter_listen_address` | `0.0.0.0:9100` | Listen address and port |
+
+### Install Mosquitto Exporter
+
+```bash
+cd mosquittoexporter
+./run.sh -h myserver -u ubuntu -p mypassword -m mqttuser -w mqttpassword
+```
+
+Builds and installs the [sapcc/mosquitto-exporter](https://github.com/sapcc/mosquitto-exporter) from source (requires `golang-go` on the target, installed automatically). The exporter subscribes to Mosquitto's `$SYS/#` topic tree and exposes broker metrics at `http://<host>:9234/metrics`.
+
+MQTT credentials are stored in `/etc/mosquitto-exporter.env` (mode 0600, root-only) and never written to the systemd unit file.
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `-m` | MQTT broker username (optional) |
+| `-w` | MQTT broker password (optional) |
+
+**Configurable variables** in `mosquittoexporter/playbook/roles/mosquitto_exporter/defaults/main.yml`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `mosquitto_exporter_version` | `0.8.0` | Version to build and install |
+| `mosquitto_exporter_listen_address` | `0.0.0.0:9234` | Listen address and port |
+| `mosquitto_exporter_broker_endpoint` | `tcp://127.0.0.1:1883` | MQTT broker endpoint |
+| `mosquitto_exporter_mqtt_user` | `""` | MQTT username (set via `-m` flag) |
+| `mosquitto_exporter_mqtt_password` | `""` | MQTT password (set via `-w` flag) |
+
+**Note:** Mosquitto must have `sys_interval` set to a non-zero value in its config (the default is 10 seconds). Verify the broker is publishing stats with:
+```bash
+mosquitto_sub -u <user> -P <password> -t '$SYS/#' -v -C 5
+```
+
+After deploying, add a scrape target in `prometheus/playbook/roles/prometheus/defaults/main.yml`:
+```yaml
+- job_name: "mosquitto"
+  static_configs:
+    - targets:
+        - "myserver:9234"
+```
+
+To enable the **Mosquitto MQTT Broker** Grafana dashboard, set `grafana_provisioned_mosquitto_dashboard: true` in `grafana/playbook/roles/grafana/defaults/main.yml` and re-run the Grafana playbook. The dashboard includes panels for connected clients, subscriptions, message rates, publish rates, network throughput, and stored messages.
 
 ### Install Prometheus
 
@@ -124,9 +168,10 @@ Comes pre-configured with:
 ## Typical Setup Order
 
 1. Install **Node Exporter** on all machines you want to monitor
-2. Install **Prometheus** on your monitoring server, adding all node exporter targets
-3. Install **Grafana** on the same (or different) server to visualize metrics
-4. Optionally install **Docker** on any hosts that need it
+2. Install **Mosquitto Exporter** on the host running the Mosquitto broker
+3. Install **Prometheus** on your monitoring server, adding all node exporter and mosquitto exporter targets
+4. Install **Grafana** on the same (or different) server to visualize metrics
+5. Optionally install **Docker** on any hosts that need it
 
 ## Project Structure
 
@@ -142,6 +187,11 @@ ansible-playbooks/
 │   └── playbook/
 │       ├── site.yml
 │       └── roles/node_exporter/
+├── mosquittoexporter/
+│   ├── run.sh
+│   └── playbook/
+│       ├── site.yml
+│       └── roles/mosquitto_exporter/
 ├── prometheus/
 │   ├── run.sh
 │   └── playbook/

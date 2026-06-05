@@ -1,0 +1,6 @@
+---
+- name: Install Mosquitto Exporter
+  hosts: all
+  become: true
+  roles:
+    - mosquitto_exporter
