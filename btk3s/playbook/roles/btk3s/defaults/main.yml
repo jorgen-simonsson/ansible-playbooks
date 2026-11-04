@@ -1,0 +1,35 @@
+---
+# btk3s release tag to install (from github.com/beacontower/tools releases)
+btk3s_version: "btk3s-v0.7.4"
+
+# k3s install options (passed to https://get.k3s.io)
+k3s_install_exec: "--disable traefik"
+k3s_kubeconfig_mode: "644"
+
+# k9s version to install ("latest" or a tag such as "v0.50.6")
+k9s_version: "latest"
+
+# Ubuntu codename used for the Docker and Azure CLI apt repositories.
+# Override if a vendor repo does not yet publish packages for a new release.
+docker_apt_codename: "{{ ansible_facts['distribution_release'] }}"
+azure_cli_apt_codename: "{{ ansible_facts['distribution_release'] }}"
+
+# Docker daemon configuration (written to /etc/docker/daemon.json)
+docker_daemon_config: {}
+
+# Global git identity for the login user
+git_user_name: "72338"
+git_user_email: "jorgen.simonsson@eon.se"
+
+# GitLab server whose credentials are saved in ~/.git-credentials
+git_server: "git.eon-cds.de"
+
+# GitLab credentials (prompted for by site.yml; leave empty to skip saving)
+gitlab_user: ""
+gitlab_password: ""
+
+# Repositories cloned into git_projects_dir (existing clones are left untouched)
+git_projects_dir: "{{ dev_home }}/Projects"
+git_clone_repos:
+  - name: hemflex
+    repo: "https://{{ git_server }}/repos/bit-customdevelopment/hemflex"

@@ -1,0 +1,13 @@
+---
+- name: Provision BeaconTower btk3s development environment
+  hosts: all
+  become: true
+  vars_prompt:
+    - name: gitlab_user
+      prompt: "GitLab username (leave empty to skip saving credentials)"
+      private: false
+    - name: gitlab_password
+      prompt: "GitLab personal access token (scopes: read_repository, write_repository)"
+      private: true
+  roles:
+    - btk3s

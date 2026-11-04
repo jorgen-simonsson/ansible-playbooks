@@ -1,0 +1,35 @@
+---
+- name: Create ~/.local/bin
+  ansible.builtin.file:
+    path: "{{ dev_home }}/.local/bin"
+    state: directory
+    mode: "0755"
+  become: false
+
+- name: Check installed btk3s version
+  ansible.builtin.command: "{{ dev_home }}/.local/bin/btk3s version"
+  register: btk3s_installed
+  changed_when: false
+  failed_when: false
+  become: false
+
+- name: Download btk3s binary
+  ansible.builtin.get_url:
+    url: "https://github.com/beacontower/tools/releases/download/{{ btk3s_version }}/btk3s-linux-{{ dev_arch }}"
+    dest: "{{ dev_home }}/.local/bin/btk3s"
+    mode: "0755"
+    force: true
+  become: false
+  when: >-
+    btk3s_installed.rc != 0 or
+    (btk3s_version | regex_replace('^btk3s-v?', '')) not in btk3s_installed.stdout
+
+- name: Verify btk3s
+  ansible.builtin.command: "{{ dev_home }}/.local/bin/btk3s version"
+  register: btk3s_verify
+  changed_when: false
+  become: false
+
+- name: Show btk3s version
+  ansible.builtin.debug:
+    var: btk3s_verify.stdout

@@ -1,0 +1,22 @@
+---
+- name: Add Microsoft GPG key
+  ansible.builtin.get_url:
+    url: https://packages.microsoft.com/keys/microsoft.asc
+    dest: /etc/apt/keyrings/microsoft.asc
+    mode: "0644"
+    force: false
+
+- name: Add Azure CLI repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ dpkg_arch.stdout }} signed-by=/etc/apt/keyrings/microsoft.asc]
+      https://packages.microsoft.com/repos/azure-cli/
+      {{ azure_cli_apt_codename }} main
+    state: present
+    filename: azure-cli
+
+- name: Install Azure CLI
+  ansible.builtin.apt:
+    name: azure-cli
+    state: present
+    update_cache: true

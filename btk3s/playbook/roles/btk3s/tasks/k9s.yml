@@ -1,0 +1,25 @@
+---
+- name: Set k9s download URL
+  ansible.builtin.set_fact:
+    k9s_url: >-
+      https://github.com/derailed/k9s/releases/{{
+      'latest/download' if k9s_version == 'latest' else 'download/' ~ k9s_version
+      }}/k9s_Linux_{{ dev_arch }}.tar.gz
+
+- name: Check installed k9s version
+  ansible.builtin.command: /usr/local/bin/k9s version --short
+  register: k9s_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install k9s
+  ansible.builtin.unarchive:
+    src: "{{ k9s_url }}"
+    dest: /usr/local/bin
+    remote_src: true
+    include:
+      - k9s
+    mode: "0755"
+  when: >-
+    k9s_installed.rc != 0 or
+    (k9s_version != 'latest' and k9s_version not in k9s_installed.stdout)

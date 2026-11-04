@@ -11,6 +11,7 @@ A collection of Ansible playbooks for provisioning and monitoring Ubuntu 24.04 s
 | **mosquittoexporter** | Installs Prometheus Mosquitto Exporter as a systemd service | 9234 |
 | **prometheus** | Installs Prometheus server with configurable scrape targets | 9090 |
 | **grafana** | Installs Grafana with auto-provisioned Prometheus datasource and Node Exporter dashboard | 3000 |
+| **btk3s** | BeaconTower dev environment: Docker, Azure CLI, btop, k3s, k9s, Claude CLI, btk3s, git + hemflex clone | — |
 
 ## Prerequisites
 
@@ -165,6 +166,39 @@ Comes pre-configured with:
 | `grafana_datasources` | Prometheus on localhost:9090 | List of datasources to provision |
 | `grafana_plugins` | `[]` | Grafana plugins to install |
 
+### Install btk3s Development Environment
+
+```bash
+cd btk3s
+./run.sh -l btk3s                                  # Lima VM named "btk3s"
+./run.sh -h myserver -u ubuntu -p mypassword       # any other Ubuntu host
+```
+
+Provisions a BeaconTower development environment. The `-l <instance>` flag targets a [Lima](https://lima-vm.io) VM using the SSH config Lima generates at `~/.lima/<instance>/ssh.config` (key-based auth, no password needed).
+
+Installs, in order:
+1. `apt update` + `apt upgrade`
+2. Docker CE (SSH user added to the `docker` group)
+3. Azure CLI (`az`)
+4. btop
+5. k3s (with Traefik disabled, kubeconfig mode `644`; `KUBECONFIG` is exported in the user's `~/.bashrc`)
+6. k9s
+7. Claude CLI (to `~/.local/bin/claude`)
+8. btk3s binary (to `~/.local/bin/btk3s`)
+9. Git identity (`72338` / `jorgen.simonsson@eon.se`), on-disk credential store, and a clone of `hemflex` into `~/Projects` (prompts for GitLab username and password)
+
+**Configurable variables** in `btk3s/playbook/roles/btk3s/defaults/main.yml`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `btk3s_version` | `btk3s-v0.7.4` | Release tag from `beacontower/tools` |
+| `k3s_install_exec` | `--disable traefik` | `INSTALL_K3S_EXEC` passed to the k3s installer |
+| `k3s_kubeconfig_mode` | `644` | `K3S_KUBECONFIG_MODE` passed to the k3s installer |
+| `k9s_version` | `latest` | k9s release tag, or `latest` (only installed if missing) |
+| `docker_apt_codename` / `azure_cli_apt_codename` | host's Ubuntu codename | Override if a vendor repo lacks packages for a new Ubuntu release |
+
+Re-running is idempotent: k3s and Claude CLI are skipped if already installed, and btk3s is only re-downloaded when `btk3s version` doesn't match `btk3s_version`.
+
 ## Typical Setup Order
 
 1. Install **Node Exporter** on all machines you want to monitor
@@ -197,9 +231,14 @@ ansible-playbooks/
 │   └── playbook/
 │       ├── site.yml
 │       └── roles/prometheus/
-└── grafana/
+├── grafana/
+│   ├── run.sh
+│   └── playbook/
+│       ├── site.yml
+│       └── roles/grafana/
+└── btk3s/
     ├── run.sh
     └── playbook/
         ├── site.yml
-        └── roles/grafana/
+        └── roles/btk3s/
 ```

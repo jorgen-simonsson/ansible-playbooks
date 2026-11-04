@@ -1,0 +1,61 @@
+---
+- name: Determine the unprivileged login user and home directory
+  ansible.builtin.shell: id -un && echo "$HOME"
+  become: false
+  register: login_user_info
+  changed_when: false
+
+- name: Set login user facts
+  ansible.builtin.set_fact:
+    dev_user: "{{ login_user_info.stdout_lines[0] }}"
+    dev_home: "{{ login_user_info.stdout_lines[1] }}"
+    dev_arch: "{{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else 'amd64' }}"
+
+- name: Update apt cache and upgrade packages
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: true
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - btop
+      - git
+    state: present
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Get dpkg architecture
+  ansible.builtin.command: dpkg --print-architecture
+  register: dpkg_arch
+  changed_when: false
+
+- name: Install Docker
+  ansible.builtin.import_tasks: docker.yml
+
+- name: Install Azure CLI
+  ansible.builtin.import_tasks: azure_cli.yml
+
+- name: Install k3s
+  ansible.builtin.import_tasks: k3s.yml
+
+- name: Install k9s
+  ansible.builtin.import_tasks: k9s.yml
+
+- name: Install Claude CLI
+  ansible.builtin.import_tasks: claude.yml
+
+- name: Install btk3s
+  ansible.builtin.import_tasks: btk3s.yml
+
+- name: Configure git and clone repositories
+  ansible.builtin.import_tasks: git.yml

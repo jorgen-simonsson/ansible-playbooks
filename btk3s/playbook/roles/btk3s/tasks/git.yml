@@ -1,0 +1,53 @@
+---
+- name: Configure git user name
+  community.general.git_config:
+    name: user.name
+    value: "{{ git_user_name }}"
+    scope: global
+  become: false
+
+- name: Configure git user email
+  community.general.git_config:
+    name: user.email
+    value: "{{ git_user_email }}"
+    scope: global
+  become: false
+
+- name: Configure git to store credentials on disk
+  community.general.git_config:
+    name: credential.helper
+    value: store
+    scope: global
+  become: false
+
+- name: Save GitLab credentials to ~/.git-credentials
+  ansible.builtin.lineinfile:
+    path: "{{ dev_home }}/.git-credentials"
+    regexp: "^https://[^@]*@{{ git_server | regex_escape }}$"
+    line: >-
+      https://{{ gitlab_user | urlencode | replace('/', '%2F') }}:{{
+      gitlab_password | urlencode | replace('/', '%2F') }}@{{ git_server }}
+    create: true
+    mode: "0600"
+  become: false
+  no_log: true
+  when: gitlab_user | length > 0 and gitlab_password | length > 0
+
+- name: Create Projects directory
+  ansible.builtin.file:
+    path: "{{ git_projects_dir }}"
+    state: directory
+    mode: "0755"
+  become: false
+
+- name: Clone repositories
+  ansible.builtin.git:
+    repo: "{{ item.repo }}"
+    dest: "{{ git_projects_dir }}/{{ item.name }}"
+    update: false
+  environment:
+    GIT_TERMINAL_PROMPT: "0"
+  loop: "{{ git_clone_repos }}"
+  loop_control:
+    label: "{{ item.name }}"
+  become: false
