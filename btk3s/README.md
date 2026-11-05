@@ -12,11 +12,12 @@ The playbook runs these steps in order:
 | 2 | Docker CE, Buildx, Compose | Official Docker apt repo | system |
 | 3 | Azure CLI (`az`) | Microsoft apt repo | system |
 | 4 | btop | Ubuntu apt | system |
-| 5 | k3s (Traefik disabled) | `https://get.k3s.io` installer | `/usr/local/bin/k3s` |
-| 6 | k9s | GitHub release tarball | `/usr/local/bin/k9s` |
-| 7 | Claude CLI | `https://claude.ai/install.sh` (as login user) | `~/.local/bin/claude` |
-| 8 | btk3s | GitHub release from `beacontower/tools` | `~/.local/bin/btk3s` |
-| 9 | Git setup + `hemflex` clone | Global git config, credential store, `git clone` | `~/Projects/hemflex` |
+| 5 | .NET 10 SDK (runtime + C# compiler, `dotnet` CLI) | Ubuntu apt; `ppa:dotnet/backports` on Ubuntu 24.04 | system |
+| 6 | k3s (Traefik disabled) | `https://get.k3s.io` installer | `/usr/local/bin/k3s` |
+| 7 | k9s | GitHub release tarball | `/usr/local/bin/k9s` |
+| 8 | Claude CLI | `https://claude.ai/install.sh` (as login user) | `~/.local/bin/claude` |
+| 9 | btk3s | GitHub release from `beacontower/tools` | `~/.local/bin/btk3s` |
+| 10 | Git setup + `hemflex` clone | Global git config, credential store, `git clone` | `~/Projects/hemflex` |
 
 The playbook also makes these changes:
 - Adds the login user to the `docker` group.
@@ -110,6 +111,7 @@ docker run --rm hello-world   # Docker without sudo
 kubectl get nodes             # k3s cluster (kubectl is bundled with k3s)
 k9s                           # cluster TUI
 az version                    # Azure CLI
+dotnet --list-sdks            # .NET SDK (should list 10.0.x)
 claude --version              # Claude CLI
 git config --global --list    # git identity + credential helper
 ls ~/Projects/hemflex         # cloned repository
@@ -178,6 +180,7 @@ All tunable variables are in `playbook/roles/btk3s/defaults/main.yml`:
 | `k3s_install_exec` | `--disable traefik` | `INSTALL_K3S_EXEC` passed to the k3s installer |
 | `k3s_kubeconfig_mode` | `644` | `K3S_KUBECONFIG_MODE` passed to the k3s installer |
 | `k9s_version` | `latest` | k9s release tag (for example `v0.50.6`) or `latest` |
+| `dotnet_sdk_package` | `dotnet-sdk-10.0` | .NET SDK apt package to install |
 | `docker_apt_codename` | host's Ubuntu codename | Ubuntu codename for the Docker apt repo |
 | `azure_cli_apt_codename` | host's Ubuntu codename | Ubuntu codename for the Azure CLI apt repo |
 | `docker_daemon_config` | `{}` | Written to `/etc/docker/daemon.json` when non-empty |
@@ -210,7 +213,8 @@ You can safely run the playbook again at any time:
 
 | Component | Behavior on re-run |
 |-----------|--------------------|
-| apt packages | Upgraded to the latest available versions |
+| apt packages (incl. .NET SDK) | Upgraded to the latest available versions |
+| .NET backports PPA | Added only if the SDK package isn't available from the configured apt repositories |
 | k3s | Skipped if `/usr/local/bin/k3s` exists |
 | Claude CLI | Skipped if `~/.local/bin/claude` exists. The CLI updates itself. |
 | k9s | Skipped if installed. With a pinned `k9s_version`, a different installed version is replaced. |
@@ -230,6 +234,8 @@ To force a fresh k3s or Claude CLI install, remove the binary inside the VM firs
 **Docker or Azure CLI repo returns 404 / no packages**: The vendor hasn't published packages for the VM's Ubuntu release yet. Set `docker_apt_codename` and/or `azure_cli_apt_codename` to the previous LTS codename (for example `noble`) and re-run.
 
 **`hemflex` clone fails with an authentication error**: The GitLab username or password was wrong, or no credentials were saved. Re-run and enter them again; the stored entry is replaced. Inside the VM, `cat ~/.git-credentials` shows what's stored. `HTTP Basic: Access denied` means GitLab requires a personal access token, not your account password, or the token is expired or missing the `read_repository`/`write_repository` scopes. After a rejected login, git's credential store deletes the entry, so `~/.git-credentials` ends up empty. That's expected.
+
+**.NET SDK package not found**: On Ubuntu 24.04 the playbook adds `ppa:dotnet/backports` because the SDK isn't in the main archive. If that PPA has no packages for your release, check `apt-cache policy dotnet-sdk-10.0` inside the VM, or set `dotnet_sdk_package` to an available version.
 
 **Privilege escalation times out on Ubuntu 26+**: Add `-s` to use the classic `sudo.ws` instead of `sudo-rs`.
 
@@ -263,6 +269,7 @@ btk3s/
             ├── main.yml            # facts, apt upgrade, base packages, includes
             ├── docker.yml
             ├── azure_cli.yml
+            ├── dotnet.yml          # .NET SDK (adds backports PPA if needed)
             ├── k3s.yml
             ├── k9s.yml
             ├── claude.yml

@@ -45,6 +45,9 @@
 - name: Install Azure CLI
   ansible.builtin.import_tasks: azure_cli.yml
 
+- name: Install .NET SDK
+  ansible.builtin.import_tasks: dotnet.yml
+
 - name: Install k3s
   ansible.builtin.import_tasks: k3s.yml
 

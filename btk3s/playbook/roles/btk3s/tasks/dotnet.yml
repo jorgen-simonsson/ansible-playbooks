@@ -1,0 +1,29 @@
+---
+# dotnet-sdk-10.0 ships in the Ubuntu archive from 25.10 on; Ubuntu 24.04
+# gets it from the .NET backports PPA maintained by Canonical.
+- name: Check whether the .NET SDK package is available from configured repositories
+  ansible.builtin.command: apt-cache show {{ dotnet_sdk_package }}
+  register: dotnet_pkg_available
+  changed_when: false
+  failed_when: false
+
+- name: Add .NET backports PPA
+  ansible.builtin.apt_repository:
+    repo: ppa:dotnet/backports
+    state: present
+  when: dotnet_pkg_available.rc != 0
+
+- name: Install .NET SDK (includes runtime and C# compiler)
+  ansible.builtin.apt:
+    name: "{{ dotnet_sdk_package }}"
+    state: present
+    update_cache: true
+
+- name: Verify .NET SDK
+  ansible.builtin.command: dotnet --list-sdks
+  register: dotnet_verify
+  changed_when: false
+
+- name: Show installed .NET SDKs
+  ansible.builtin.debug:
+    var: dotnet_verify.stdout_lines

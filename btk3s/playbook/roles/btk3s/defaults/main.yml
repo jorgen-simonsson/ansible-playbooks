@@ -3,11 +3,14 @@
 btk3s_version: "btk3s-v0.7.4"
 
 # k3s install options (passed to https://get.k3s.io)
-k3s_install_exec: "--disable traefik"
+k3s_install_exec: ""
 k3s_kubeconfig_mode: "644"
 
 # k9s version to install ("latest" or a tag such as "v0.50.6")
 k9s_version: "latest"
+
+# .NET SDK apt package (SDK includes the runtime and C# tooling)
+dotnet_sdk_package: "dotnet-sdk-10.0"
 
 # Ubuntu codename used for the Docker and Azure CLI apt repositories.
 # Override if a vendor repo does not yet publish packages for a new release.

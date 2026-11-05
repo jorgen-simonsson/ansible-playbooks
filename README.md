@@ -11,7 +11,7 @@ A collection of Ansible playbooks for provisioning and monitoring Ubuntu 24.04 s
 | **mosquittoexporter** | Installs Prometheus Mosquitto Exporter as a systemd service | 9234 |
 | **prometheus** | Installs Prometheus server with configurable scrape targets | 9090 |
 | **grafana** | Installs Grafana with auto-provisioned Prometheus datasource and Node Exporter dashboard | 3000 |
-| **btk3s** | BeaconTower dev environment: Docker, Azure CLI, btop, k3s, k9s, Claude CLI, btk3s, git + hemflex clone | — |
+| **btk3s** | BeaconTower dev environment: Docker, Azure CLI, btop, .NET 10 SDK, k3s, k9s, Claude CLI, btk3s, git + hemflex clone | — |
 
 ## Prerequisites
 
@@ -181,11 +181,12 @@ Installs, in order:
 2. Docker CE (SSH user added to the `docker` group)
 3. Azure CLI (`az`)
 4. btop
-5. k3s (with Traefik disabled, kubeconfig mode `644`; `KUBECONFIG` is exported in the user's `~/.bashrc`)
-6. k9s
-7. Claude CLI (to `~/.local/bin/claude`)
-8. btk3s binary (to `~/.local/bin/btk3s`)
-9. Git identity (`72338` / `jorgen.simonsson@eon.se`), on-disk credential store, and a clone of `hemflex` into `~/Projects` (prompts for GitLab username and password)
+5. .NET 10 SDK (`dotnet-sdk-10.0`: runtime + C# compiler/tooling; on Ubuntu 24.04 it comes from the `ppa:dotnet/backports` PPA, newer releases have it in the Ubuntu archive)
+6. k3s (with Traefik disabled, kubeconfig mode `644`; `KUBECONFIG` is exported in the user's `~/.bashrc`)
+7. k9s
+8. Claude CLI (to `~/.local/bin/claude`)
+9. btk3s binary (to `~/.local/bin/btk3s`)
+10. Git identity (`72338` / `jorgen.simonsson@eon.se`), on-disk credential store, and a clone of `hemflex` into `~/Projects` (prompts for GitLab username and password)
 
 **Configurable variables** in `btk3s/playbook/roles/btk3s/defaults/main.yml`:
 
@@ -195,6 +196,7 @@ Installs, in order:
 | `k3s_install_exec` | `--disable traefik` | `INSTALL_K3S_EXEC` passed to the k3s installer |
 | `k3s_kubeconfig_mode` | `644` | `K3S_KUBECONFIG_MODE` passed to the k3s installer |
 | `k9s_version` | `latest` | k9s release tag, or `latest` (only installed if missing) |
+| `dotnet_sdk_package` | `dotnet-sdk-10.0` | .NET SDK apt package to install |
 | `docker_apt_codename` / `azure_cli_apt_codename` | host's Ubuntu codename | Override if a vendor repo lacks packages for a new Ubuntu release |
 
 Re-running is idempotent: k3s and Claude CLI are skipped if already installed, and btk3s is only re-downloaded when `btk3s version` doesn't match `btk3s_version`.
