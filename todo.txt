@@ -1,0 +1,6 @@
+Please add installs for:
+
+flux cli
+helm
+step
+

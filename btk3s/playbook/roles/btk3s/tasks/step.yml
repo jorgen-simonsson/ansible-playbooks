@@ -1,0 +1,21 @@
+---
+- name: Add Smallstep GPG key
+  ansible.builtin.get_url:
+    url: https://packages.smallstep.com/keys/apt/repo-signing-key.gpg
+    dest: /etc/apt/keyrings/smallstep.asc
+    mode: "0644"
+    force: false
+
+- name: Add Smallstep repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/etc/apt/keyrings/smallstep.asc]
+      https://packages.smallstep.com/stable/debian debs main
+    state: present
+    filename: smallstep
+
+- name: Install step CLI
+  ansible.builtin.apt:
+    name: step-cli
+    state: present
+    update_cache: true

@@ -1,0 +1,16 @@
+---
+- name: Check installed Flux CLI version
+  ansible.builtin.command: /usr/local/bin/flux version --client
+  register: flux_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install Flux CLI
+  ansible.builtin.shell: set -o pipefail && curl -fsSL https://fluxcd.io/install.sh | bash
+  args:
+    executable: /bin/bash
+  environment:
+    FLUX_VERSION: "{{ '' if flux_version == 'latest' else flux_version | regex_replace('^v', '') }}"
+  when: >-
+    flux_installed.rc != 0 or
+    (flux_version != 'latest' and (flux_version | regex_replace('^v', '')) not in flux_installed.stdout)

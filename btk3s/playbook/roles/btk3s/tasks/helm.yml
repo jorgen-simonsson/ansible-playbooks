@@ -1,0 +1,21 @@
+---
+- name: Add Helm GPG key
+  ansible.builtin.get_url:
+    url: https://packages.buildkite.com/helm-linux/helm-debian/gpgkey
+    dest: /etc/apt/keyrings/helm.asc
+    mode: "0644"
+    force: false
+
+- name: Add Helm repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ dpkg_arch.stdout }} signed-by=/etc/apt/keyrings/helm.asc]
+      https://packages.buildkite.com/helm-linux/helm-debian/any/ any main
+    state: present
+    filename: helm
+
+- name: Install Helm
+  ansible.builtin.apt:
+    name: helm
+    state: present
+    update_cache: true

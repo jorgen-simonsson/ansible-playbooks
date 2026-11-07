@@ -54,6 +54,15 @@
 - name: Install k9s
   ansible.builtin.import_tasks: k9s.yml
 
+- name: Install Helm
+  ansible.builtin.import_tasks: helm.yml
+
+- name: Install Flux CLI
+  ansible.builtin.import_tasks: flux.yml
+
+- name: Install step CLI
+  ansible.builtin.import_tasks: step.yml
+
 - name: Install Claude CLI
   ansible.builtin.import_tasks: claude.yml
 

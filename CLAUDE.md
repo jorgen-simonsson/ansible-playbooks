@@ -49,7 +49,7 @@ Each playbook follows the same layout:
         └── files/                  # static assets (e.g. Grafana dashboard JSON)
 ```
 
-`btk3s` deviates: `tasks/main.yml` sets shared facts and then `import_tasks` one file per component (`docker.yml`, `azure_cli.yml`, `dotnet.yml`, `k3s.yml`, `k9s.yml`, `claude.yml`, `btk3s.yml`, `git.yml`), and it has no `templates/` or `files/`.
+`btk3s` deviates: `tasks/main.yml` sets shared facts and then `import_tasks` one file per component (`docker.yml`, `azure_cli.yml`, `dotnet.yml`, `k3s.yml`, `k9s.yml`, `helm.yml`, `flux.yml`, `step.yml`, `claude.yml`, `btk3s.yml`, `git.yml`), and it has no `templates/` or `files/`.
 
 **Key design choices:**
 - Binary installs (Prometheus, Node Exporter) check the currently installed version before downloading; re-running is idempotent and skips downloads if the version matches.
