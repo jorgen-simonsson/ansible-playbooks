@@ -1,0 +1,25 @@
+---
+# Install the corporate CA certificates from btk3s/certs into the system trust
+# store. Runs before any other installation so later downloads (apt repos,
+# GitHub releases, install scripts) work behind the TLS-inspecting proxy.
+- name: Ensure local CA certificate directory exists
+  ansible.builtin.file:
+    path: /usr/local/share/ca-certificates
+    state: directory
+    mode: "0755"
+
+- name: Copy CA certificates
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    # update-ca-certificates only picks up *.crt; strip spaces from file names
+    dest: "/usr/local/share/ca-certificates/{{ item | basename | replace(' ', '_') }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ query('ansible.builtin.fileglob', btk3s_certs_dir ~ '/*.crt') }}"
+  register: ca_certs_copied
+
+- name: Update system CA trust store
+  ansible.builtin.command: update-ca-certificates
+  when: ca_certs_copied is changed
+  changed_when: true

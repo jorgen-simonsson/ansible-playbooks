@@ -2,6 +2,10 @@
 # btk3s release tag to install (from github.com/beacontower/tools releases)
 btk3s_version: "btk3s-v0.7.4"
 
+# Directory (on the control machine) holding PEM *.crt CA certificates to
+# install and trust on the target, right after the initial apt upgrade
+btk3s_certs_dir: "{{ role_path }}/../../../certs"
+
 # k3s install options (passed to https://get.k3s.io)
 k3s_install_exec: ""
 k3s_kubeconfig_mode: "644"
