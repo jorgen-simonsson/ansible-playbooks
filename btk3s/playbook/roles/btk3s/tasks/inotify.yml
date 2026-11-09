@@ -1,0 +1,18 @@
+---
+# Raise the inotify limits before anything else is installed; k3s and the
+# workloads it runs exhaust the Ubuntu defaults.
+- name: Configure inotify limits
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/90-btk3s-inotify.conf
+    content: |
+      fs.inotify.max_user_instances = 512
+      fs.inotify.max_user_watches = 524288
+    owner: root
+    group: root
+    mode: "0644"
+  register: inotify_sysctl_conf
+
+- name: Apply sysctl settings
+  ansible.builtin.command: sysctl --system
+  when: inotify_sysctl_conf is changed
+  changed_when: true

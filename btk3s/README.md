@@ -20,6 +20,7 @@ The playbook runs these steps in order:
 | 10 | Git setup + `hemflex` clone | Global git config, credential store, `git clone` | `~/Projects/hemflex` |
 
 The playbook also makes these changes:
+- Raises the inotify limits (`fs.inotify.max_user_instances = 512`, `fs.inotify.max_user_watches = 524288`) in `/etc/sysctl.d/90-btk3s-inotify.conf`, before any of the steps above.
 - Adds the login user to the `docker` group.
 - Sets the global git `user.name` / `user.email` and `credential.helper store`, and saves your GitLab credentials in `~/.git-credentials` (mode `0600`).
 - Appends `export KUBECONFIG=/etc/rancher/k3s/k3s.yaml` to the login user's `~/.bashrc`, so `kubectl` and `k9s` work without extra setup.
@@ -267,6 +268,7 @@ btk3s/
         ├── handlers/main.yml
         └── tasks/
             ├── main.yml            # facts, apt upgrade, base packages, includes
+            ├── inotify.yml         # inotify sysctl limits
             ├── docker.yml
             ├── azure_cli.yml
             ├── dotnet.yml          # .NET SDK (adds backports PPA if needed)
