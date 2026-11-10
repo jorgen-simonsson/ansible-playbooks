@@ -1,6 +1,6 @@
 ---
 # btk3s release tag to install (from github.com/beacontower/tools releases)
-btk3s_version: "btk3s-v0.7.5"
+btk3s_version: "btk3s-v0.7.6"
 
 # Directory (on the control machine) holding PEM *.crt CA certificates to
 # install and trust on the target, right after the initial apt upgrade

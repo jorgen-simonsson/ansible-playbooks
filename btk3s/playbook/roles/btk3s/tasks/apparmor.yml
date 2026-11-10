@@ -1,0 +1,85 @@
+---
+# Override containerd's default AppArmor profile before k3s starts; on kernel
+# 7.0 it blocks signals inside a container, which hangs PostgreSQL's initdb.
+# See btk3s/APPARMOR.md. The marker comment is what btk3s/fixapparmor.sh uses
+# to recognise the override, so keep the two in step.
+- name: Install AppArmor
+  ansible.builtin.apt:
+    name: apparmor
+    state: present
+
+- name: Check for an existing containerd AppArmor profile
+  ansible.builtin.stat:
+    path: /etc/apparmor.d/cri-containerd.apparmor.d
+  register: apparmor_profile
+
+- name: Check that the existing profile is the btk3s override
+  ansible.builtin.command: >-
+    grep -qE "# btk3s fixapparmor.sh override|Local override of containerd's default profile \(btk3s dev VM\)"
+    /etc/apparmor.d/cri-containerd.apparmor.d
+  register: apparmor_profile_ours
+  changed_when: false
+  failed_when: apparmor_profile_ours.rc > 1
+  when: apparmor_profile.stat.exists
+
+- name: Refuse to overwrite a profile not written by btk3s
+  ansible.builtin.fail:
+    msg: /etc/apparmor.d/cri-containerd.apparmor.d exists and was not written by btk3s - not overwriting
+  when: apparmor_profile.stat.exists and apparmor_profile_ours.rc != 0
+
+- name: Check for AppArmor ABI 4.0
+  ansible.builtin.stat:
+    path: /etc/apparmor.d/abi/4.0
+  register: apparmor_abi
+
+- name: Install containerd AppArmor profile override
+  ansible.builtin.copy:
+    dest: /etc/apparmor.d/cri-containerd.apparmor.d
+    content: |
+      # btk3s fixapparmor.sh override - see APPARMOR.md in the hemflex repo.
+      # containerd only loads its built-in profile when none with this name is loaded,
+      # and apparmor.service loads /etc/apparmor.d at boot before k3s starts.
+      {{ 'abi <abi/4.0>,' if apparmor_abi.stat.exists else '' }}
+      #include <tunables/global>
+
+      profile cri-containerd.apparmor.d flags=(attach_disconnected,mediate_deleted) {
+        #include <abstractions/base>
+
+        network,
+        capability,
+        file,
+        umount,
+        signal (receive) peer=unconfined,
+        signal (receive) peer=runc,
+        signal (receive) peer=crun,
+        signal (send,receive) peer=cri-containerd.apparmor.d,
+        # added by btk3s: stacked peer label on kernel 7.0 is not matched by peer= rules
+        signal,
+
+        deny @{PROC}/* w,
+        deny @{PROC}/{[^1-9/],[^1-9/][^0-9/],[^1-9s/][^0-9y/][^0-9s/],[^1-9/][^0-9/][^0-9/][^0-9/]*}/** w,
+        deny @{PROC}/sys/[^k]** w,
+        deny @{PROC}/sys/kernel/{?,??,[^s][^h][^m]**} w,
+        deny @{PROC}/sysrq-trigger rwklx,
+        deny @{PROC}/kcore rwklx,
+        deny mount,
+        deny /sys/[^f]*/** wklx,
+        deny /sys/f[^s]*/** wklx,
+        deny /sys/fs/[^c]*/** wklx,
+        deny /sys/fs/c[^g]*/** wklx,
+        deny /sys/fs/cg[^r]*/** wklx,
+        deny /sys/firmware/** rwklx,
+        deny /sys/devices/virtual/powercap/** rwklx,
+        deny /sys/kernel/security/** rwklx,
+        ptrace (trace,tracedby,read,readby) peer=cri-containerd.apparmor.d,
+      }
+    owner: root
+    group: root
+    mode: "0644"
+    validate: apparmor_parser -QK %s
+  register: apparmor_profile_override
+
+- name: Load containerd AppArmor profile override
+  ansible.builtin.command: apparmor_parser -r /etc/apparmor.d/cri-containerd.apparmor.d
+  when: apparmor_profile_override is changed
+  changed_when: true

@@ -54,6 +54,9 @@
 - name: Install .NET SDK
   ansible.builtin.import_tasks: dotnet.yml
 
+- name: Configure AppArmor for containerd
+  ansible.builtin.import_tasks: apparmor.yml
+
 - name: Install k3s
   ansible.builtin.import_tasks: k3s.yml
 

@@ -9,18 +9,23 @@ The playbook runs these steps in order:
 | # | Component | How | Installed to |
 |---|-----------|-----|--------------|
 | 1 | System updates | `apt update` + `apt upgrade` | — |
-| 2 | Docker CE, Buildx, Compose | Official Docker apt repo | system |
-| 3 | Azure CLI (`az`) | Microsoft apt repo | system |
-| 4 | btop | Ubuntu apt | system |
-| 5 | .NET 10 SDK (runtime + C# compiler, `dotnet` CLI) | Ubuntu apt; `ppa:dotnet/backports` on Ubuntu 24.04 | system |
-| 6 | k3s (Traefik disabled) | `https://get.k3s.io` installer | `/usr/local/bin/k3s` |
-| 7 | k9s | GitHub release tarball | `/usr/local/bin/k9s` |
-| 8 | Claude CLI | `https://claude.ai/install.sh` (as login user) | `~/.local/bin/claude` |
-| 9 | btk3s | GitHub release from `beacontower/tools` | `~/.local/bin/btk3s` |
-| 10 | Git setup + `hemflex` clone | Global git config, credential store, `git clone` | `~/Projects/hemflex` |
+| 2 | CA certificates from `certs/*.crt` | `update-ca-certificates` | `/usr/local/share/ca-certificates` |
+| 3 | btop | Ubuntu apt | system |
+| 4 | Docker CE, Buildx, Compose | Official Docker apt repo | system |
+| 5 | Azure CLI (`az`) | Microsoft apt repo | system |
+| 6 | .NET 10 SDK (runtime + C# compiler, `dotnet` CLI) | Ubuntu apt; `ppa:dotnet/backports` on Ubuntu 24.04 | system |
+| 7 | k3s | `https://get.k3s.io` installer | `/usr/local/bin/k3s` |
+| 8 | k9s | GitHub release tarball | `/usr/local/bin/k9s` |
+| 9 | Helm | Helm apt repo | system |
+| 10 | Flux CLI | `https://fluxcd.io/install.sh` | `/usr/local/bin/flux` |
+| 11 | step CLI | Smallstep apt repo | system |
+| 12 | Claude CLI | `https://claude.ai/install.sh` (as login user) | `~/.local/bin/claude` |
+| 13 | btk3s | GitHub release from `beacontower/tools` | `~/.local/bin/btk3s` |
+| 14 | Git setup + `hemflex` clone | Global git config, credential store, `git clone` | `~/Projects/hemflex` |
 
 The playbook also makes these changes:
 - Raises the inotify limits (`fs.inotify.max_user_instances = 512`, `fs.inotify.max_user_watches = 524288`) in `/etc/sysctl.d/90-btk3s-inotify.conf`, before any of the steps above.
+- Installs an override of containerd's AppArmor profile in `/etc/apparmor.d/cri-containerd.apparmor.d`, before k3s is installed. On kernel 7.0 the stock profile blocks signals inside a container, which hangs PostgreSQL's initdb. The override adds a bare `signal,` rule, which is fine for a dev VM but shouldn't be carried over to shared clusters. See [APPARMOR.md](APPARMOR.md).
 - Adds the login user to the `docker` group.
 - Sets the global git `user.name` / `user.email` and `credential.helper store`, and saves your GitLab credentials in `~/.git-credentials` (mode `0600`).
 - Appends `export KUBECONFIG=/etc/rancher/k3s/k3s.yaml` to the login user's `~/.bashrc`, so `kubectl` and `k9s` work without extra setup.
@@ -32,6 +37,7 @@ The playbook supports both `amd64` and `arm64` targets (for example, Lima on App
 You need these on the control machine (your Mac or Linux host):
 
 ```bash
+brew install ansible              # on macOS, or use pipx on either platform:
 pipx install --include-deps ansible
 brew install lima                 # if using a Lima VM
 sudo apt install -y sshpass       # only for password mode (-h/-u/-p) on Linux
@@ -42,7 +48,7 @@ sudo apt install -y sshpass       # only for password mode (-h/-u/-p) on Linux
 If the VM doesn't exist yet, create it:
 
 ```bash
-limactl create --name=btk3s --cpus=8 --memory=24 --disk=100 template://ubuntu-lts
+limactl create --name=btk3s --cpus=8 --memory=24 --disk=100 template:ubuntu-lts
 limactl start btk3s
 ```
 
@@ -111,6 +117,9 @@ Then check each tool:
 docker run --rm hello-world   # Docker without sudo
 kubectl get nodes             # k3s cluster (kubectl is bundled with k3s)
 k9s                           # cluster TUI
+helm version                  # Helm
+flux --version                # Flux CLI
+step version                  # step CLI
 az version                    # Azure CLI
 dotnet --list-sdks            # .NET SDK (should list 10.0.x)
 claude --version              # Claude CLI
@@ -177,10 +186,12 @@ All tunable variables are in `playbook/roles/btk3s/defaults/main.yml`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `btk3s_version` | `btk3s-v0.7.4` | Release tag from `github.com/beacontower/tools` |
-| `k3s_install_exec` | `--disable traefik` | `INSTALL_K3S_EXEC` passed to the k3s installer |
+| `btk3s_version` | `btk3s-v0.7.5` | Release tag from `github.com/beacontower/tools` |
+| `btk3s_certs_dir` | `btk3s/certs` | Directory on the control machine holding the `*.crt` CA certificates to trust |
+| `k3s_install_exec` | empty | `INSTALL_K3S_EXEC` passed to the k3s installer |
 | `k3s_kubeconfig_mode` | `644` | `K3S_KUBECONFIG_MODE` passed to the k3s installer |
 | `k9s_version` | `latest` | k9s release tag (for example `v0.50.6`) or `latest` |
+| `flux_version` | `latest` | Flux CLI release (for example `2.7.2`) or `latest` |
 | `dotnet_sdk_package` | `dotnet-sdk-10.0` | .NET SDK apt package to install |
 | `docker_apt_codename` | host's Ubuntu codename | Ubuntu codename for the Docker apt repo |
 | `azure_cli_apt_codename` | host's Ubuntu codename | Ubuntu codename for the Azure CLI apt repo |
@@ -214,11 +225,14 @@ You can safely run the playbook again at any time:
 
 | Component | Behavior on re-run |
 |-----------|--------------------|
-| apt packages (incl. .NET SDK) | Upgraded to the latest available versions |
+| apt packages (incl. .NET SDK, Helm, step CLI) | Upgraded to the latest available versions |
+| CA certificates | Copied again and the trust store updated only if a certificate changed |
 | .NET backports PPA | Added only if the SDK package isn't available from the configured apt repositories |
+| AppArmor profile override | Rewritten and reloaded only if its content changed. The run fails if a profile not written by btk3s is already there. |
 | k3s | Skipped if `/usr/local/bin/k3s` exists |
 | Claude CLI | Skipped if `~/.local/bin/claude` exists. The CLI updates itself. |
 | k9s | Skipped if installed. With a pinned `k9s_version`, a different installed version is replaced. |
+| Flux CLI | Skipped if installed. With a pinned `flux_version`, a different installed version is replaced. |
 | btk3s | Downloaded again only when the installed version doesn't match `btk3s_version` |
 | git config | Re-applied (no change if values match) |
 | GitLab credentials | Replaced if you enter new ones. Kept if you leave the prompts empty. |
@@ -253,11 +267,18 @@ On a non-Lima host, log out and back in.
 
 **`k9s` / `kubectl` can't connect**: Check that `echo $KUBECONFIG` prints `/etc/rancher/k3s/k3s.yaml` and that `sudo systemctl status k3s` shows the service running.
 
+**`btk3s up` hangs at PostgreSQL initdb, with `apparmor="DENIED"` signal errors in the kernel log**: The AppArmor profile override is missing or isn't loaded. Run `./fixapparmor.sh --check` inside the VM to find out. A cluster that already failed needs the recovery steps in [APPARMOR.md](APPARMOR.md), because the override doesn't wake processes that are already stuck.
+
+**`cri-containerd.apparmor.d exists and was not written by btk3s`**: Someone else installed a profile with that name, and the playbook won't overwrite it. Inspect `/etc/apparmor.d/cri-containerd.apparmor.d` inside the VM, remove it if it's not needed, and re-run.
+
 ## Layout
 
 ```
 btk3s/
 ├── README.md
+├── APPARMOR.md                     # containerd AppArmor problem and recovery steps
+├── fixapparmor.sh                  # check, install or remove the override by hand
+├── certs/                          # CA certificates (*.crt) trusted on the target
 ├── run.sh                          # entry point (Lima or host/user/password)
 └── playbook/
     ├── ansible.cfg
@@ -269,11 +290,16 @@ btk3s/
         └── tasks/
             ├── main.yml            # facts, apt upgrade, base packages, includes
             ├── inotify.yml         # inotify sysctl limits
+            ├── certs.yml           # CA certificates into the system trust store
             ├── docker.yml
             ├── azure_cli.yml
             ├── dotnet.yml          # .NET SDK (adds backports PPA if needed)
+            ├── apparmor.yml        # containerd AppArmor profile override
             ├── k3s.yml
             ├── k9s.yml
+            ├── helm.yml
+            ├── flux.yml
+            ├── step.yml
             ├── claude.yml
             ├── btk3s.yml
             └── git.yml             # git identity, credentials, repo clones
